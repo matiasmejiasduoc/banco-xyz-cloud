@@ -2,6 +2,8 @@
 
 Actividad sumativa semana 8, Desarrollo Backend III.
 
+Repositorio: https://github.com/matiasmejiasduoc/banco-xyz-cloud
+
 Continuación del proyecto BFF de la semana 5 (datos de bank_legacy_data). En esta entrega se agregó seguridad con OAuth 2.0, tolerancia a fallos con Resilience4j, mensajería con Kafka y se dockerizó todo para levantarlo con docker compose.
 
 ## Estructura
