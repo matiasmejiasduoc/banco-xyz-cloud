@@ -1,0 +1,40 @@
+Imagenes y contenedores - 2026-10-04 15:27:48
+======================================================================
+
+$ docker images banco-xyz/*
+REPOSITORY                        TAG           SIZE
+banco-xyz/bff-web                 1.0.0         350MB
+banco-xyz/movimientos-service     1.0.0         449MB
+banco-xyz/bff-cajero              1.0.0         394MB
+banco-xyz/cuentas-service         1.0.0         405MB
+banco-xyz/bff-movil               1.0.0         350MB
+banco-xyz/transacciones-service   1.0.0         405MB
+banco-xyz/auth-server             1.0.0         335MB
+
+$ docker compose ps
+NAME                                IMAGE                                   STATUS                    PORTS
+banco-xyz-auth-server-1             banco-xyz/auth-server:1.0.0             Up 27 seconds (healthy)   0.0.0.0:9100->9100/tcp, [::]:9100->9100/tcp
+banco-xyz-bff-cajero-1              banco-xyz/bff-cajero:1.0.0              Up 10 seconds (healthy)   0.0.0.0:8092->8092/tcp, [::]:8092->8092/tcp
+banco-xyz-bff-movil-1               banco-xyz/bff-movil:1.0.0               Up 10 seconds (healthy)   0.0.0.0:8091->8091/tcp, [::]:8091->8091/tcp
+banco-xyz-bff-web-1                 banco-xyz/bff-web:1.0.0                 Up 10 seconds (healthy)   0.0.0.0:8090->8090/tcp, [::]:8090->8090/tcp
+banco-xyz-cuentas-service-1         banco-xyz/cuentas-service:1.0.0         Up 16 seconds (healthy)   0.0.0.0:8081->8081/tcp, [::]:8081->8081/tcp
+banco-xyz-kafka-1                   apache/kafka:4.1.0                      Up 27 seconds (healthy)   0.0.0.0:29092->29092/tcp, [::]:29092->29092/tcp
+banco-xyz-kafka-ui-1                kafbat/kafka-ui:v1.3.0                  Up 20 seconds             0.0.0.0:8085->8080/tcp, [::]:8085->8080/tcp
+banco-xyz-movimientos-service-1     banco-xyz/movimientos-service:1.0.0     Up 16 seconds (healthy)   0.0.0.0:8083->8083/tcp, [::]:8083->8083/tcp
+banco-xyz-postgres-1                postgres:17-alpine                      Up 27 seconds (healthy)   5432/tcp
+banco-xyz-transacciones-service-1   banco-xyz/transacciones-service:1.0.0   Up 16 seconds (healthy)   0.0.0.0:8082->8082/tcp, [::]:8082->8082/tcp
+
+$ docker compose logs auth-server | grep Started
+auth-server-1  | 2026-10-04T18:27:23.978Z  INFO 1 --- [auth-server] [           main] c.d.bancoxyz.auth.AuthServerApplication  : Started AuthServerApplication in 1.386 seconds (process running for 1.6
+$ docker compose logs cuentas-service | grep Started
+cuentas-service-1  | 2026-10-04T18:27:36.994Z  INFO 1 --- [cuentas-service] [           main] c.d.b.cuentas.CuentasServiceApplication  : Started CuentasServiceApplication in 3.837 seconds (process run
+$ docker compose logs movimientos-service | grep Started
+movimientos-service-1  | 2026-10-04T18:27:36.825Z  INFO 1 --- [movimientos-service] [           main] c.d.b.m.MovimientosServiceApplication    : Started MovimientosServiceApplication in 3.723 seconds 
+$ docker compose logs transacciones-service | grep Started
+transacciones-service-1  | 2026-10-04T18:27:36.364Z  INFO 1 --- [transacciones-service] [           main] c.d.b.t.TransaccionesServiceApplication  : Started TransaccionesServiceApplication in 3.224 se
+$ docker compose logs bff-web | grep Started
+bff-web-1  | 2026-10-04T18:27:42.044Z  INFO 1 --- [bff-web] [           main] c.d.bancoxyz.bff.web.BffWebApplication   : Started BffWebApplication in 3.216 seconds (process running for 3.526)
+$ docker compose logs bff-movil | grep Started
+bff-movil-1  | 2026-10-04T18:27:42.058Z  INFO 1 --- [bff-movil] [           main] c.d.b.bff.movil.BffMovilApplication      : Started BffMovilApplication in 3.233 seconds (process running for 3.512)
+$ docker compose logs bff-cajero | grep Started
+bff-cajero-1  | 2026-10-04T18:27:42.367Z  INFO 1 --- [bff-cajero] [           main] c.d.b.bff.cajero.BffCajeroApplication    : Started BffCajeroApplication in 3.544 seconds (process running for 3.834)

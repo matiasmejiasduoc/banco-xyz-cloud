@@ -1,0 +1,85 @@
+Mensajeria asincrona con Kafka - 2026-10-04 15:27:52
+======================================================================
+
+$ kafka-topics.sh --describe
+Topic: banco.retiros.DLT  TopicId: 7YvfNe8ZTmO7OoxD0M4_aw  PartitionCount: 3  ReplicationFactor: 1  Configs: min.insync.replicas=1
+Topic: banco.retiros  TopicId: plsyD8UnTkml5e4mlh0qVA  PartitionCount: 3  ReplicationFactor: 1  Configs: min.insync.replicas=1
+
+-- Saldo antes del retiro
+$ curl -H 'Authorization: Bearer <token>' http://localhost:8092/cajero/api/cuentas/112/saldo
+HTTP 200 (0.018549s)
+{
+    "cuenta": "****12",
+    "saldoDisponible": 10000.0,
+    "fecha": "2026-10-04T18:27:53.273241304"
+}
+
+-- Retiro de 1000 desde CAJ-001
+$ curl -H 'Authorization: Bearer <token>' -H 'Idempotency-Key: evid-1791138472' -H 'Content-Type: application/json' -d '{"monto":1000}' http://localhost:8092/cajero/api/cuentas/112/retiros
+HTTP 200 (0.261813s)
+{
+    "operacion": "CAJ-001-evid-1791138472",
+    "cuenta": "****12",
+    "monto": 1000.0,
+    "saldoDisponible": 9000.0,
+    "fecha": "2026-10-04T18:27:53.413842596"
+}
+
+-- Logs del productor y del consumidor
+bff-cajero-1           | 2026-10-04T18:27:53.584Z  INFO [bff-cajero] [nio-8092-exec-6] c.d.b.b.cajero.evento.PublicadorRetiros  : Evento CAJ-001-evid-1791138472 publicado en banco.retiros-2 offset 0
+bff-cajero-1           | 2026-10-04T18:27:53.585Z  INFO [bff-cajero] [nio-8092-exec-6] c.d.b.bff.cajero.api.CajeroService       : Retiro CAJ-001-evid-1791138472 de 1000 en cuenta 112 desde CAJ-001
+movimientos-service-1  | 2026-10-04T18:27:53.660Z  INFO [movimientos-service] [ntainer#0-0-C-1] c.d.b.m.evento.RetirosListener           : Retiro CAJ-001-evid-1791138472 registrado como movimiento 941 (particion 2, offset 0)
+
+-- Mensaje en el topico banco.retiros
+Partition:2	112	{"referencia":"CAJ-001-evid-1791138472","cuentaId":112,"monto":1000.00,"terminal":"CAJ-001","canal":"CAJERO","fecha":"2026-10-04T18:27:53.413842596"}
+
+-- Movimiento registrado por el consumidor (consulta via BFF web)
+$ curl -H 'Authorization: Bearer <token>' 'http://localhost:8090/web/api/cuentas/112/movimientos?tipo=RETIRO&size=1'
+HTTP 200 (0.028517s)
+{
+    "contenido": [
+        {
+            "id": 941,
+            "fecha": "2026-10-04",
+            "tipo": "RETIRO",
+            "naturaleza": "EGRESO",
+            "monto": 1000.0,
+            "montoConSigno": -1000.0,
+            "descripcion": "Retiro en cajero CAJ-001",
+            "canal": "CAJERO",
+            "referencia": "CAJ-001-evid-1791138472",
+            "observaciones": null
+        }
+    ],
+    "pagina": 0,
+    "tamano": 1,
+    "totalElementos": 17,
+    "totalPaginas": 17
+}
+
+-- Reintento con la misma Idempotency-Key
+$ curl -H 'Authorization: Bearer <token>' -H 'Idempotency-Key: evid-1791138472' -H 'Content-Type: application/json' -d '{"monto":1000}' http://localhost:8092/cajero/api/cuentas/112/retiros
+HTTP 200 (0.022685s)
+{
+    "operacion": "CAJ-001-evid-1791138472",
+    "cuenta": "****12",
+    "monto": 1000.0,
+    "saldoDisponible": 9000.0,
+    "fecha": "2026-10-04T18:27:53.413843"
+}
+
+-- El consumidor recibe el evento repetido y no duplica el movimiento
+movimientos-service-1  | 2026-10-04T18:27:53.660Z  INFO [movimientos-service] [ntainer#0-0-C-1] c.d.b.m.evento.RetirosListener           : Retiro CAJ-001-evid-1791138472 registrado como movimiento 941 (particion 2, offset 0)
+movimientos-service-1  | 2026-10-04T18:28:01.982Z  INFO [movimientos-service] [ntainer#0-0-C-1] c.d.b.m.evento.RetirosListener           : Retiro CAJ-001-evid-1791138472 registrado como movimiento 941 (particion 2, offset 1)
+
+-- Evento invalido publicado a mano: se envia al topico banco.retiros.DLT
+movimientos-service-1  | 2026-10-04T18:28:04.786Z ERROR [movimientos-service] [ntainer#0-0-C-1] c.d.b.movimientos.evento.KafkaConfig     : Evento {"referencia":"MANUAL-001","cuentaId":null,"monto":-5,"terminal":"X","canal":"CAJERO"} enviado a banco.retiros.DLT
+
+$ kafka-console-consumer.sh --topic banco.retiros.DLT
+Partition:0	Offset:0	{"referencia":"MANUAL-001","cuentaId":null,"monto":-5,"terminal":"X","canal":"CAJERO"}
+
+
+GROUP  TOPIC  PARTITION  CURRENT-OFFSET  LOG-END-OFFSET  LAG  CONSUMER-ID  HOST  CLIENT-ID
+movimientos-service  banco.retiros  1  -  0  -  consumer-movimientos-service-1-8fcd5a42-669f-403d-b971-ec986bbe30a0  /172.24.0.6  consumer-movimientos-service-1
+movimientos-service  banco.retiros  2  2  2  0  consumer-movimientos-service-1-8fcd5a42-669f-403d-b971-ec986bbe30a0  /172.24.0.6  consumer-movimientos-service-1
+movimientos-service  banco.retiros  0  1  1  0  consumer-movimientos-service-1-8fcd5a42-669f-403d-b971-ec986bbe30a0  /172.24.0.6  consumer-movimientos-service-1

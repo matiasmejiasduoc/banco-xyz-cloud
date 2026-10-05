@@ -1,0 +1,40 @@
+Tests unitarios - 2026-10-04 15:26:42
+======================================================================
+
+$ ./mvnw clean test
+Building banco-xyz-cloud 0.0.1-SNAPSHOT                            [1/9]
+Building commons 0.0.1-SNAPSHOT                                    [2/9]
+Tests run: 9, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.065 s -- in cl.duoc.bancoxyz.commons.legacy.FechaLegacyParserTest
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.005 s -- in cl.duoc.bancoxyz.commons.legacy.LectorCsvLegacyTest
+Tests run: 10, Failures: 0, Errors: 0, Skipped: 0
+Building auth-server 0.0.1-SNAPSHOT                                [3/9]
+Building cuentas-service 0.0.1-SNAPSHOT                            [4/9]
+Tests run: 8, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 2.987 s -- in cl.duoc.bancoxyz.cuentas.CuentaServiceTest
+Tests run: 8, Failures: 0, Errors: 0, Skipped: 0
+Building movimientos-service 0.0.1-SNAPSHOT                        [5/9]
+Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.613 s -- in cl.duoc.bancoxyz.movimientos.RetirosListenerTest
+Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 2.054 s -- in cl.duoc.bancoxyz.movimientos.MovimientoServiceTest
+Tests run: 7, Failures: 0, Errors: 0, Skipped: 0
+Building transacciones-service 0.0.1-SNAPSHOT                      [6/9]
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 2.231 s -- in cl.duoc.bancoxyz.transacciones.TransaccionServiceTest
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0
+Building bff-web 0.0.1-SNAPSHOT                                    [7/9]
+Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.453 s -- in cl.duoc.bancoxyz.bff.web.VistaWebServiceTest
+Tests run: 3, Failures: 0, Errors: 0, Skipped: 0
+Building bff-movil 0.0.1-SNAPSHOT                                  [8/9]
+Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.055 s -- in cl.duoc.bancoxyz.bff.movil.TransformadorMovilTest
+Tests run: 3, Failures: 0, Errors: 0, Skipped: 0
+Building bff-cajero 0.0.1-SNAPSHOT                                 [9/9]
+Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.428 s -- in cl.duoc.bancoxyz.bff.cajero.CajeroServiceTest
+Tests run: 4, Failures: 0, Errors: 0, Skipped: 0
+Reactor Summary for banco-xyz-cloud 0.0.1-SNAPSHOT:
+banco-xyz-cloud .................................... SUCCESS [  0.042 s]
+commons ............................................ SUCCESS [  1.272 s]
+auth-server ........................................ SUCCESS [  0.078 s]
+cuentas-service .................................... SUCCESS [  3.619 s]
+movimientos-service ................................ SUCCESS [  3.295 s]
+transacciones-service .............................. SUCCESS [  2.698 s]
+bff-web ............................................ SUCCESS [  0.923 s]
+bff-movil .......................................... SUCCESS [  0.494 s]
+bff-cajero ......................................... SUCCESS [  0.877 s]
+BUILD SUCCESS

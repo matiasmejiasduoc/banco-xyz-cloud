@@ -1,0 +1,120 @@
+server:
+  port: 8090
+
+spring:
+  application:
+    name: bff-web
+  threads:
+    virtual:
+      enabled: true
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${AUTH_ISSUER:http://localhost:9100}
+          jwk-set-uri: ${AUTH_URL:http://localhost:9100}/oauth2/jwks
+      client:
+        registration:
+          banco:
+            provider: banco
+            client-id: bff-web
+            client-secret: ${BFF_WEB_SECRET:bff-web-secret}
+            client-authentication-method: client_secret_basic
+            authorization-grant-type: client_credentials
+            scope: cuentas.read,movimientos.read,transacciones.read
+        provider:
+          banco:
+            token-uri: ${AUTH_URL:http://localhost:9100}/oauth2/token
+
+servicios:
+  registro-oauth: banco
+  cuentas:
+    url: ${CUENTAS_URL:http://localhost:8081}
+    timeout-conexion: 2s
+    timeout-lectura: 10s
+  movimientos:
+    url: ${MOVIMIENTOS_URL:http://localhost:8083}
+    timeout-conexion: 2s
+    timeout-lectura: 10s
+  transacciones:
+    url: ${TRANSACCIONES_URL:http://localhost:8082}
+    timeout-conexion: 2s
+    timeout-lectura: 10s
+
+web:
+  detalle:
+    ultimos-movimientos: 20
+
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        register-health-indicator: true
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        slow-call-duration-threshold: 2s
+        slow-call-rate-threshold: 80
+        wait-duration-in-open-state: 20s
+        permitted-number-of-calls-in-half-open-state: 3
+        automatic-transition-from-open-to-half-open-enabled: true
+        record-exceptions:
+          - org.springframework.web.client.ResourceAccessException
+          - org.springframework.web.client.HttpServerErrorException
+        ignore-exceptions:
+          - org.springframework.web.client.HttpClientErrorException
+    instances:
+      cuentas:
+        base-config: default
+      movimientos:
+        base-config: default
+      transacciones:
+        base-config: default
+  retry:
+    configs:
+      default:
+        max-attempts: 3
+        wait-duration: 300ms
+        enable-exponential-backoff: true
+        exponential-backoff-multiplier: 2
+        retry-exceptions:
+          - org.springframework.web.client.ResourceAccessException
+          - org.springframework.web.client.HttpServerErrorException
+        ignore-exceptions:
+          - org.springframework.web.client.HttpClientErrorException
+          - io.github.resilience4j.circuitbreaker.CallNotPermittedException
+          - io.github.resilience4j.bulkhead.BulkheadFullException
+    instances:
+      cuentas:
+        base-config: default
+      movimientos:
+        base-config: default
+      transacciones:
+        base-config: default
+  bulkhead:
+    configs:
+      default:
+        max-concurrent-calls: 30
+        max-wait-duration: 200ms
+    instances:
+      cuentas:
+        base-config: default
+      movimientos:
+        base-config: default
+      transacciones:
+        base-config: default
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+  health:
+    circuitbreakers:
+      enabled: true

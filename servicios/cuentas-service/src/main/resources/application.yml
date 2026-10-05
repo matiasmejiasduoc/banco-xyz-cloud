@@ -1,0 +1,38 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: cuentas-service
+  datasource:
+    url: ${DB_URL:jdbc:h2:mem:cuentas;DB_CLOSE_DELAY=-1}
+    username: ${DB_USUARIO:sa}
+    password: ${DB_CLAVE:}
+  jpa:
+    hibernate:
+      ddl-auto: ${DDL_AUTO:create-drop}
+    open-in-view: false
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${AUTH_ISSUER:http://localhost:9100}
+          jwk-set-uri: ${AUTH_URL:http://localhost:9100}/oauth2/jwks
+
+banco:
+  carga:
+    archivo: classpath:data/intereses.csv
+  tasas:
+    ahorro: 0.025
+    prestamo: 0.018
+    hipoteca: 0.012
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      probes:
+        enabled: true

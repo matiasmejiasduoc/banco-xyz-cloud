@@ -1,0 +1,109 @@
+server:
+  port: 8092
+
+spring:
+  application:
+    name: bff-cajero
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${AUTH_ISSUER:http://localhost:9100}
+          jwk-set-uri: ${AUTH_URL:http://localhost:9100}/oauth2/jwks
+      client:
+        registration:
+          banco:
+            provider: banco
+            client-id: bff-cajero
+            client-secret: ${BFF_CAJERO_SECRET:bff-cajero-secret}
+            client-authentication-method: client_secret_basic
+            authorization-grant-type: client_credentials
+            scope: cuentas.read,cuentas.write
+        provider:
+          banco:
+            token-uri: ${AUTH_URL:http://localhost:9100}/oauth2/token
+  kafka:
+    bootstrap-servers: ${KAFKA_SERVIDORES:localhost:29092}
+    producer:
+      acks: all
+      properties:
+        enable.idempotence: true
+        max.block.ms: 3000
+        request.timeout.ms: 2000
+        delivery.timeout.ms: 4000
+
+servicios:
+  registro-oauth: banco
+  cuentas:
+    url: ${CUENTAS_URL:http://localhost:8081}
+    timeout-conexion: 1s
+    timeout-lectura: 2s
+
+cajero:
+  espera-publicacion: 5s
+  retiro:
+    monto-minimo: 1000
+    monto-maximo: 10000
+    multiplo: 1000
+
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        register-health-indicator: true
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        slow-call-duration-threshold: 2s
+        slow-call-rate-threshold: 80
+        wait-duration-in-open-state: 20s
+        permitted-number-of-calls-in-half-open-state: 3
+        automatic-transition-from-open-to-half-open-enabled: true
+        record-exceptions:
+          - org.springframework.web.client.ResourceAccessException
+          - org.springframework.web.client.HttpServerErrorException
+        ignore-exceptions:
+          - org.springframework.web.client.HttpClientErrorException
+    instances:
+      cuentas:
+        base-config: default
+  retry:
+    configs:
+      default:
+        max-attempts: 3
+        wait-duration: 300ms
+        enable-exponential-backoff: true
+        exponential-backoff-multiplier: 2
+        retry-exceptions:
+          - org.springframework.web.client.ResourceAccessException
+          - org.springframework.web.client.HttpServerErrorException
+        ignore-exceptions:
+          - org.springframework.web.client.HttpClientErrorException
+          - io.github.resilience4j.circuitbreaker.CallNotPermittedException
+          - io.github.resilience4j.bulkhead.BulkheadFullException
+    instances:
+      cuentas:
+        base-config: default
+  bulkhead:
+    configs:
+      default:
+        max-concurrent-calls: 10
+        max-wait-duration: 200ms
+    instances:
+      cuentas:
+        base-config: default
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+  health:
+    circuitbreakers:
+      enabled: true

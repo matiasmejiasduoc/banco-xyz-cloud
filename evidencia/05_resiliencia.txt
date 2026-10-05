@@ -1,0 +1,204 @@
+Tolerancia a fallos con Resilience4j - 2026-10-04 15:28:15
+======================================================================
+
+-- Saldo movil con cuentas-service arriba
+$ curl -H 'Authorization: Bearer <token>' http://localhost:8091/movil/api/cuentas/106/saldo
+HTTP 200 (0.016128s)
+{
+    "id": 106,
+    "saldo": 5000,
+    "referencial": false
+}
+
+$ docker compose stop cuentas-service
+ Container banco-xyz-cuentas-service-1  Stopped
+
+-- Saldo movil con cuentas-service caido (fallback al ultimo saldo conocido)
+$ curl -H 'Authorization: Bearer <token>' http://localhost:8091/movil/api/cuentas/106/saldo
+HTTP 200 (1.016857s)
+{
+    "id": 106,
+    "saldo": 5000,
+    "referencial": true
+}
+
+-- Saldo movil de una cuenta sin respaldo
+$ curl -H 'Authorization: Bearer <token>' http://localhost:8091/movil/api/cuentas/114/saldo
+HTTP 503 (2.960920s)
+{
+    "estado": 503,
+    "codigo": "CIRCUITO_ABIERTO",
+    "mensaje": "El servicio esta temporalmente suspendido, intente nuevamente en unos segundos",
+    "ruta": "/movil/api/cuentas/114/saldo",
+    "fecha": "2026-10-04T18:28:20.084718094"
+}
+
+-- Llamadas repetidas al BFF web: reintentos y luego circuito abierto
+llamada 1: HTTP 503 en 2.958767s -> SERVICIO_NO_DISPONIBLE
+llamada 2: HTTP 503 en 0.007440s -> CIRCUITO_ABIERTO
+llamada 3: HTTP 503 en 0.005308s -> CIRCUITO_ABIERTO
+llamada 4: HTTP 503 en 0.005097s -> CIRCUITO_ABIERTO
+llamada 5: HTTP 503 en 0.004638s -> CIRCUITO_ABIERTO
+llamada 6: HTTP 503 en 0.004661s -> CIRCUITO_ABIERTO
+
+-- Panel web degradado (la seccion cuentas queda en avisos)
+$ curl -H 'Authorization: Bearer <token>' 'http://localhost:8090/web/api/panel?desde=2024-01-01&hasta=2024-01-07'
+HTTP 200 (0.017207s)
+{
+    "desde": "2024-01-01",
+    "hasta": "2024-01-07",
+    "cuentas": null,
+    "transacciones": {
+        "cantidad": 11,
+        "totalCreditos": 3000.0,
+        "totalDebitos": 4400.0,
+        "balance": -1400.0,
+        "noClasificadas": 4,
+        "serieDiaria": [
+            {
+                "fecha": "2024-01-01",
+                "cantidad": 4,
+                "totalCreditos": 800.0,
+                "totalDebitos": 1200.0,
+                "noClasificadas": 2
+            },
+            {
+                "fecha": "2024-01-02",
+                "cantidad": 1,
+                "totalCreditos": 700.0,
+                "totalDebitos": 0.0,
+                "noClasificadas": 0
+            },
+            {
+                "fecha": "2024-01-04",
+                "cantidad": 3,
+                "totalCreditos": 800.0,
+                "totalDebitos": 200.0,
+                "noClasificadas": 1
+            },
+            {
+                "fecha": "2024-01-05",
+                "cantidad": 1,
+                "totalCreditos": 0.0,
+                "totalDebitos": 0.0,
+                "noClasificadas": 1
+            },
+            {
+                "fecha": "2024-01-06",
+                "cantidad": 1,
+                "totalCreditos": 0.0,
+                "totalDebitos": 3000.0,
+                "noClasificadas": 0
+            },
+            {
+                "fecha": "2024-01-07",
+                "cantidad": 1,
+                "totalCreditos": 700.0,
+                "totalDebitos": 0.0,
+                "noClasificadas": 0
+            }
+        ]
+    },
+    "movimientos": {
+        "desde": "2024-01-01",
+        "hasta": "2024-01-07",
+        "cantidadMovimientos": 9,
+        "totalIngresos": 6000.0,
+        "totalEgresos": 9000.0,
+        "flujoNeto": -3000.0,
+        "distribucion": [
+            {
+                "tipo": "DEPOSITO",
+                "cantidad": 3,
+                "total": 6000.0,
+                "porcentajeDelMonto": 40.0
+            },
+            {
+                "tipo": "RETIRO",
+                "cantidad": 2,
+                "total": 3000.0,
+                "porcentajeDelMonto": 20.0
+            },
+            {
+                "tipo": "COMPRA",
+                "cantidad": 3,
+                "total": 5500.0,
+                "porcentajeDelMonto": 36.67
+            },
+            {
+                "tipo": "PAGO",
+                "cantidad": 1,
+                "total": 500.0,
+                "porcentajeDelMonto": 3.33
+            }
+        ],
+        "primerMovimiento": "2024-01-02",
+        "ultimoMovimiento": "2024-01-07"
+    },
+    "avisos": [
+        "La seccion cuentas no esta disponible en este momento"
+    ],
+    "generadoEn": "2026-10-04T18:28:23.339000971"
+}
+
+-- Estado de los circuit breakers en bff-web
+transacciones  CLOSED    fallas=0 rechazadas=0 tasa=-1.0%
+cuentas        OPEN      fallas=3 rechazadas=6 tasa=50.0%
+movimientos    CLOSED    fallas=0 rechazadas=0 tasa=0.0%
+
+-- Logs de bff-web
+bff-web-1  | 2026-10-04T18:28:23.230Z  WARN [bff-web] [mcat-handler-15] c.d.b.bff.web.error.ManejadorErroresWeb  : Circuito abierto en /web/api/cuentas/106: CircuitBreaker 'cuentas' is OPEN and does not permit further ca
+bff-web-1  | 2026-10-04T18:28:23.261Z  WARN [bff-web] [mcat-handler-16] c.d.b.bff.web.error.ManejadorErroresWeb  : Circuito abierto en /web/api/cuentas/106: CircuitBreaker 'cuentas' is OPEN and does not permit further ca
+bff-web-1  | 2026-10-04T18:28:23.293Z  WARN [bff-web] [mcat-handler-17] c.d.b.bff.web.error.ManejadorErroresWeb  : Circuito abierto en /web/api/cuentas/106: CircuitBreaker 'cuentas' is OPEN and does not permit further ca
+
+$ docker compose start cuentas-service
+ Container banco-xyz-cuentas-service-1  Started
+cuentas-service healthy, esperando la ventana de 20s del estado OPEN
+llamada 1: HTTP 200 en 0.130824s
+llamada 2: HTTP 200 en 0.017990s
+llamada 3: HTTP 200 en 0.016562s
+circuito cuentas: CLOSED
+
+-- Kafka caido durante un retiro: el debito se revierte
+
+-- Saldo antes
+$ curl -H 'Authorization: Bearer <token>' http://localhost:8092/cajero/api/cuentas/114/saldo
+HTTP 200 (0.022146s)
+{
+    "cuenta": "****14",
+    "saldoDisponible": 8000.0,
+    "fecha": "2026-10-04T18:28:52.575471054"
+}
+
+$ docker compose stop kafka
+ Container banco-xyz-kafka-1  Stopped
+
+-- Retiro de 3000 con Kafka detenido
+$ curl -H 'Authorization: Bearer <token>' -H 'Idempotency-Key: sin-kafka-1791138533' -H 'Content-Type: application/json' -d '{"monto":3000}' http://localhost:8092/cajero/api/cuentas/114/retiros
+HTTP 503 (3.160431s)
+{
+    "estado": 503,
+    "codigo": "OPERACION_REVERTIDA",
+    "mensaje": "No fue posible completar el retiro, no se realizo ningun cargo",
+    "ruta": "/cajero/api/cuentas/114/retiros",
+    "fecha": "2026-10-04T18:28:56.912129291"
+}
+
+-- Saldo despues (sin cargo)
+$ curl -H 'Authorization: Bearer <token>' http://localhost:8092/cajero/api/cuentas/114/saldo
+HTTP 200 (0.014506s)
+{
+    "cuenta": "****14",
+    "saldoDisponible": 8000.0,
+    "fecha": "2026-10-04T18:28:57.00461075"
+}
+bff-cajero-1  | 2026-10-04T18:28:56.887Z ERROR [bff-cajero] [nio-8092-exec-6] c.d.b.bff.cajero.api.CajeroService       : No se pudo publicar el retiro CAJ-002-sin-kafka-1791138533, se revierte el debi
+
+$ docker compose start kafka
+ Container banco-xyz-kafka-1  Started
+kafka: healthy
+
+-- restart: unless-stopped, se mata el proceso de movimientos-service
+banco-xyz-movimientos-service-1 Up 3 seconds (health: starting)
+banco-xyz-movimientos-service-1 Up 6 seconds (healthy)
+reinicios: 1

@@ -1,0 +1,34 @@
+server:
+  port: 8082
+
+spring:
+  application:
+    name: transacciones-service
+  datasource:
+    url: ${DB_URL:jdbc:h2:mem:transacciones;DB_CLOSE_DELAY=-1}
+    username: ${DB_USUARIO:sa}
+    password: ${DB_CLAVE:}
+  jpa:
+    hibernate:
+      ddl-auto: ${DDL_AUTO:create-drop}
+    open-in-view: false
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${AUTH_ISSUER:http://localhost:9100}
+          jwk-set-uri: ${AUTH_URL:http://localhost:9100}/oauth2/jwks
+
+banco:
+  carga:
+    archivo: classpath:data/transacciones.csv
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      probes:
+        enabled: true

@@ -1,0 +1,42 @@
+server:
+  port: 8083
+
+spring:
+  application:
+    name: movimientos-service
+  datasource:
+    url: ${DB_URL:jdbc:h2:mem:movimientos;DB_CLOSE_DELAY=-1}
+    username: ${DB_USUARIO:sa}
+    password: ${DB_CLAVE:}
+  jpa:
+    hibernate:
+      ddl-auto: ${DDL_AUTO:create-drop}
+    open-in-view: false
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${AUTH_ISSUER:http://localhost:9100}
+          jwk-set-uri: ${AUTH_URL:http://localhost:9100}/oauth2/jwks
+  kafka:
+    bootstrap-servers: ${KAFKA_SERVIDORES:localhost:29092}
+    consumer:
+      auto-offset-reset: earliest
+    listener:
+      ack-mode: record
+
+banco:
+  carga:
+    archivo: classpath:data/cuentas_anuales.csv
+  eventos:
+    reintentos: 4
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      probes:
+        enabled: true

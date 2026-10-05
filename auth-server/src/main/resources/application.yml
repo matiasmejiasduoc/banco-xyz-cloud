@@ -1,0 +1,121 @@
+server:
+  port: 9100
+
+spring:
+  application:
+    name: auth-server
+  security:
+    user:
+      name: ${CLIENTE_DEMO_USUARIO:cliente}
+      password: ${CLIENTE_DEMO_CLAVE:cliente123}
+      roles: CLIENTE
+    oauth2:
+      authorizationserver:
+        issuer: ${AUTH_ISSUER:http://localhost:9100}
+        client:
+          portal-web:
+            registration:
+              client-id: portal-web
+              client-secret: "{noop}${PORTAL_WEB_SECRET:portal-web-secret}"
+              client-name: Portal web del Banco XYZ
+              client-authentication-methods:
+                - client_secret_basic
+              authorization-grant-types:
+                - authorization_code
+                - refresh_token
+                - client_credentials
+              redirect-uris:
+                - ${PORTAL_WEB_REDIRECT:http://localhost:3000/callback}
+              scopes:
+                - openid
+                - web.read
+            require-authorization-consent: false
+            require-proof-key: true
+            token:
+              access-token-time-to-live: 10m
+          app-movil:
+            registration:
+              client-id: app-movil
+              client-secret: "{noop}${APP_MOVIL_SECRET:app-movil-secret}"
+              client-name: Aplicacion movil del Banco XYZ
+              client-authentication-methods:
+                - client_secret_basic
+              authorization-grant-types:
+                - authorization_code
+                - refresh_token
+                - client_credentials
+              redirect-uris:
+                - ${APP_MOVIL_REDIRECT:http://localhost:3001/callback}
+              scopes:
+                - openid
+                - movil.read
+            require-authorization-consent: false
+            require-proof-key: true
+            token:
+              access-token-time-to-live: 10m
+          cajero-caj-001:
+            registration:
+              client-id: CAJ-001
+              client-secret: "{noop}${CAJERO_CAJ001_SECRET:caj-001-secret}"
+              client-name: Cajero automatico CAJ-001
+              client-authentication-methods:
+                - client_secret_basic
+              authorization-grant-types:
+                - client_credentials
+              scopes:
+                - cajero.operar
+            token:
+              access-token-time-to-live: 5m
+          cajero-caj-002:
+            registration:
+              client-id: CAJ-002
+              client-secret: "{noop}${CAJERO_CAJ002_SECRET:caj-002-secret}"
+              client-name: Cajero automatico CAJ-002
+              client-authentication-methods:
+                - client_secret_basic
+              authorization-grant-types:
+                - client_credentials
+              scopes:
+                - cajero.operar
+            token:
+              access-token-time-to-live: 5m
+          bff-web:
+            registration:
+              client-id: bff-web
+              client-secret: "{noop}${BFF_WEB_SECRET:bff-web-secret}"
+              client-authentication-methods:
+                - client_secret_basic
+              authorization-grant-types:
+                - client_credentials
+              scopes:
+                - cuentas.read
+                - movimientos.read
+                - transacciones.read
+            token:
+              access-token-time-to-live: 5m
+          bff-movil:
+            registration:
+              client-id: bff-movil
+              client-secret: "{noop}${BFF_MOVIL_SECRET:bff-movil-secret}"
+              client-authentication-methods:
+                - client_secret_basic
+              authorization-grant-types:
+                - client_credentials
+              scopes:
+                - cuentas.read
+                - movimientos.read
+            token:
+              access-token-time-to-live: 5m
+          bff-cajero:
+            registration:
+              client-id: bff-cajero
+              client-secret: "{noop}${BFF_CAJERO_SECRET:bff-cajero-secret}"
+              client-authentication-methods:
+                - client_secret_basic
+              authorization-grant-types:
+                - client_credentials
+              scopes:
+                - cuentas.read
+                - cuentas.write
+            token:
+              access-token-time-to-live: 5m

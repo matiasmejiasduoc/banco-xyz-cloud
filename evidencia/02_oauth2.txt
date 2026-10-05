@@ -1,0 +1,254 @@
+OAuth 2.0 con Spring Authorization Server - 2026-10-04 15:27:49
+======================================================================
+
+-- Metadatos del servidor de autorizacion
+$ curl http://localhost:9100/.well-known/oauth-authorization-server
+HTTP 200 (0.002453s)
+{
+    "issuer": "http://auth-server:9100",
+    "authorization_endpoint": "http://auth-server:9100/oauth2/authorize",
+    "token_endpoint": "http://auth-server:9100/oauth2/token",
+    "token_endpoint_auth_methods_supported": [
+        "client_secret_basic",
+        "client_secret_post",
+        "client_secret_jwt",
+        "private_key_jwt",
+        "tls_client_auth",
+        "self_signed_tls_client_auth"
+    ],
+    "jwks_uri": "http://auth-server:9100/oauth2/jwks",
+    "response_types_supported": [
+        "code"
+    ],
+    "grant_types_supported": [
+        "authorization_code",
+        "client_credentials",
+        "refresh_token",
+        "urn:ietf:params:oauth:grant-type:token-exchange"
+    ],
+    "revocation_endpoint": "http://auth-server:9100/oauth2/revoke",
+    "revocation_endpoint_auth_methods_supported": [
+        "client_secret_basic",
+        "client_secret_post",
+        "client_secret_jwt",
+        "private_key_jwt",
+        "tls_client_auth",
+        "self_signed_tls_client_auth"
+    ],
+    "introspection_endpoint": "http://auth-server:9100/oauth2/introspect",
+    "introspection_endpoint_auth_methods_supported": [
+        "client_secret_basic",
+        "client_secret_post",
+        "client_secret_jwt",
+        "private_key_jwt",
+        "tls_client_auth",
+        "self_signed_tls_client_auth"
+    ],
+    "code_challenge_methods_supported": [
+        "S256"
+    ],
+    "tls_client_certificate_bound_access_tokens": true,
+    "dpop_signing_alg_values_supported": [
+        "RS256",
+        "RS384",
+        "RS512",
+        "PS256",
+        "PS384",
+        "PS512",
+        "ES256",
+        "ES384",
+        "ES512"
+    ]
+}
+
+-- client_credentials del portal web
+$ curl -u portal-web:**** -d grant_type=client_credentials -d scope=web.read http://localhost:9100/oauth2/token
+{
+  "sub": "portal-web",
+  "aud": "portal-web",
+  "nbf": 1791138469,
+  "scope": [
+    "web.read"
+  ],
+  "iss": "http://auth-server:9100",
+  "exp": 1791139069,
+  "iat": 1791138469,
+  "jti": "5a2b30e4-9951-48f3-aa42-a176f812ef24"
+}
+
+-- client_credentials del cajero CAJ-001
+{
+  "sub": "CAJ-001",
+  "aud": "CAJ-001",
+  "nbf": 1791138469,
+  "scope": [
+    "cajero.operar"
+  ],
+  "iss": "http://auth-server:9100",
+  "exp": 1791138769,
+  "iat": 1791138469,
+  "jti": "51fc6644-a0d6-40d8-ae70-f5e0bdfe6959"
+}
+
+-- Cliente con scope no registrado
+$ curl -u CAJ-001:**** -d grant_type=client_credentials -d scope=cuentas.write http://localhost:9100/oauth2/token
+{"error":"invalid_scope"}
+HTTP 400
+
+-- Secreto incorrecto
+{"error":"invalid_client"}
+HTTP 401
+
+-- authorization_code con PKCE para el usuario cliente
+1. GET /oauth2/authorize -> 302 http://localhost:9100/login
+2. POST /login (cliente) -> 302
+3. Redireccion a la aplicacion: http://localhost:3000/callback?code=MTmju1BhlPxf1_ApS5YnH34wQYJUGapdoq...
+4. POST /oauth2/token con code y code_verifier
+   tokens recibidos: access_token, refresh_token, id_token
+{
+  "sub": "cliente",
+  "aud": "portal-web",
+  "nbf": 1791138470,
+  "scope": [
+    "openid",
+    "web.read"
+  ],
+  "iss": "http://auth-server:9100",
+  "exp": 1791139070,
+  "iat": 1791138470,
+  "jti": "80be52a4-7f55-486f-a2ec-85d968fd4723"
+}
+
+-- BFF web con el token del usuario
+$ curl -H 'Authorization: Bearer <token>' 'http://localhost:8090/web/api/cuentas?size=2'
+HTTP 200 (0.271356s)
+{
+    "contenido": [
+        {
+            "id": 101,
+            "titular": "Bob Johnson",
+            "edad": 35,
+            "tipo": "HIPOTECA",
+            "tipoDescripcion": "Credito hipotecario",
+            "saldo": 8000.0,
+            "tasaInteresMensual": 0.012,
+            "interesMensualEstimado": 96.0,
+            "saldoProyectado": 8096.0,
+            "observaciones": "Consolidada desde 17 registros legacy (5 incompletos)",
+            "actualizadaEn": "2026-10-04T18:27:37.136276"
+        },
+        {
+            "id": 102,
+            "titular": "Alice Brown",
+            "edad": 35,
+            "tipo": "HIPOTECA",
+            "tipoDescripcion": "Credito hipotecario",
+            "saldo": 12000.0,
+            "tasaInteresMensual": 0.012,
+            "interesMensualEstimado": 144.0,
+            "saldoProyectado": 12144.0,
+            "observaciones": "Consolidada desde 21 registros legacy (12 incompletos)",
+            "actualizadaEn": "2026-10-04T18:27:37.136111"
+        }
+    ],
+    "pagina": 0,
+    "tamano": 2,
+    "totalElementos": 50,
+    "totalPaginas": 25
+}
+
+-- BFF web sin token
+$ curl 'http://localhost:8090/web/api/cuentas?size=2'
+HTTP 401 (0.004617s)
+{
+    "estado": 401,
+    "codigo": "NO_AUTENTICADO",
+    "mensaje": "Se requiere un token de acceso valido",
+    "ruta": "/web/api/cuentas",
+    "fecha": "2026-10-04T18:27:50.789219969"
+}
+
+-- BFF web con token alterado
+$ curl -H 'Authorization: Bearer <token>' 'http://localhost:8090/web/api/cuentas?size=2'
+HTTP 401 (0.005910s)
+{
+    "estado": 401,
+    "codigo": "NO_AUTENTICADO",
+    "mensaje": "Se requiere un token de acceso valido",
+    "ruta": "/web/api/cuentas",
+    "fecha": "2026-10-04T18:27:50.836032136"
+}
+
+-- BFF movil con token del portal web (scope incorrecto)
+$ curl -H 'Authorization: Bearer <token>' http://localhost:8091/movil/api/cuentas/106/saldo
+HTTP 403 (0.046918s)
+{
+    "estado": 403,
+    "codigo": "ACCESO_DENEGADO",
+    "mensaje": "El token no tiene los permisos necesarios para este recurso",
+    "ruta": "/movil/api/cuentas/106/saldo",
+    "fecha": "2026-10-04T18:27:50.920191261"
+}
+
+-- cuentas-service directo con token del portal web
+$ curl -H 'Authorization: Bearer <token>' http://localhost:8081/api/cuentas/106
+HTTP 403 (0.008093s)
+{
+    "estado": 403,
+    "codigo": "ACCESO_DENEGADO",
+    "mensaje": "El token no tiene los permisos necesarios para este recurso",
+    "ruta": "/api/cuentas/106",
+    "fecha": "2026-10-04T18:27:50.970086053"
+}
+
+-- cuentas-service directo sin token
+$ curl http://localhost:8081/api/cuentas/106
+HTTP 401 (0.007638s)
+{
+    "estado": 401,
+    "codigo": "NO_AUTENTICADO",
+    "mensaje": "Se requiere un token de acceso valido",
+    "ruta": "/api/cuentas/106",
+    "fecha": "2026-10-04T18:27:51.017542928"
+}
+
+-- Token que usa bff-cajero para llamar a cuentas-service
+{
+  "sub": "bff-cajero",
+  "aud": "bff-cajero",
+  "nbf": 1791138471,
+  "scope": [
+    "cuentas.read",
+    "cuentas.write"
+  ],
+  "iss": "http://auth-server:9100",
+  "exp": 1791138771,
+  "iat": 1791138471,
+  "jti": "571fb769-8a4b-42de-9310-da338aabc6af"
+}
+
+-- cuentas-service con el token del BFF cajero
+$ curl -H 'Authorization: Bearer <token>' http://localhost:8081/api/cuentas/106
+HTTP 200 (0.006760s)
+{
+    "id": 106,
+    "titular": "Diana Prince",
+    "edad": 35,
+    "tipo": "AHORRO",
+    "saldo": 5000.0,
+    "tasaInteresMensual": 0.025,
+    "interesMensualEstimado": 125.0,
+    "observaciones": "Consolidada desde 23 registros legacy (13 incompletos)",
+    "actualizadaEn": "2026-10-04T18:27:37.136085"
+}
+
+-- movimientos-service con el token del BFF cajero (sin movimientos.read)
+$ curl -H 'Authorization: Bearer <token>' 'http://localhost:8083/api/movimientos?cuentaId=106&size=1'
+HTTP 403 (0.043667s)
+{
+    "estado": 403,
+    "codigo": "ACCESO_DENEGADO",
+    "mensaje": "El token no tiene los permisos necesarios para este recurso",
+    "ruta": "/api/movimientos",
+    "fecha": "2026-10-04T18:27:51.312556678"
+}
